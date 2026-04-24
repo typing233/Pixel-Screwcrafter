@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素螺丝工匠 - Pixel Screwcrafter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 主菜单 -->
+        <div id="main-menu" class="screen active">
+            <div class="menu-container">
+                <h1 class="game-title">
+                    <span class="pixel-text">像素螺丝工匠</span>
+                </h1>
+                <p class="subtitle">Pixel Screwcrafter</p>
+                <div class="menu-buttons">
+                    <button id="start-btn" class="menu-btn primary-btn">
+                        🎮 开始游戏
+                    </button>
+                    <button id="levels-btn" class="menu-btn secondary-btn">
+                        🗂️ 关卡选择
+                    </button>
+                    <button id="settings-btn" class="menu-btn secondary-btn">
+                        ⚙️ 设置
+                    </button>
+                </div>
+                <div class="game-info">
+                    <p>拧下螺丝，重组像素，还原艺术</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关卡选择 -->
+        <div id="level-select" class="screen">
+            <div class="level-select-container">
+                <div class="header">
+                    <h2>🗂️ 关卡选择</h2>
+                    <button id="back-to-menu-btn" class="back-btn">← 返回</button>
+                </div>
+                
+                <div class="theme-tabs">
+                    <button class="theme-tab active" data-theme="nature">🌿 自然景观</button>
+                    <button class="theme-tab" data-theme="characters">🎭 经典角色</button>
+                    <button class="theme-tab" data-theme="scifi">🚀 科幻场景</button>
+                    <button class="theme-tab" data-theme="everyday">🏠 日常物品</button>
+                </div>
+                
+                <div id="level-grid" class="level-grid">
+                    <!-- 动态生成关卡 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置界面 -->
+        <div id="settings" class="screen">
+            <div class="settings-container">
+                <div class="header">
+                    <h2>⚙️ 设置</h2>
+                    <button id="back-from-settings-btn" class="back-btn">← 返回</button>
+                </div>
+                
+                <div class="settings-options">
+                    <div class="setting-item">
+                        <label>🔊 背景音乐</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="bgm-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>🎵 音效</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sfx-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>音量</label>
+                        <input type="range" id="volume-slider" min="0" max="100" value="70">
+                    </div>
+                    <div class="setting-item">
+                        <label>🎨 游戏主题</label>
+                        <select id="theme-select">
+                            <option value="classic">经典复古</option>
+                            <option value="dark">深色模式</option>
+                            <option value="light">浅色模式</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="game-stats">
+                    <h3>📊 游戏统计</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-value" id="total-levels-played">0</span>
+                            <span class="stat-label">完成关卡</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="total-screws-removed">0</span>
+                            <span class="stat-label">拆卸螺丝</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="perfect-completions">0</span>
+                            <span class="stat-label">完美通关</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="game-screen" class="screen">
+            <div class="game-container">
+                <div class="game-header">
+                    <button id="pause-btn" class="game-btn">⏸️ 暂停</button>
+                    <div class="game-info-bar">
+                        <span class="level-name" id="current-level-name"></span>
+                        <span class="timer" id="game-timer">00:00</span>
+                        <span class="moves" id="move-count">移动: 0</span>
+                    </div>
+                    <button id="hint-btn" class="game-btn">💡 提示</button>
+                </div>
+                
+                <div class="game-area">
+                    <div class="canvas-container">
+                        <canvas id="game-canvas" width="600" height="600"></canvas>
+                    </div>
+                    
+                    <div class="screw-tray">
+                        <h3>🔩 螺丝托盘</h3>
+                        <div id="screw-inventory" class="screw-inventory">
+                            <!-- 动态生成螺丝 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="game-controls">
+                    <button id="restart-btn" class="control-btn">🔄 重新开始</button>
+                    <button id="undo-btn" class="control-btn">↩️ 撤销</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 暂停菜单 -->
+        <div id="pause-menu" class="modal overlay">
+            <div class="modal-content">
+                <h2>⏸️ 游戏暂停</h2>
+                <div class="modal-buttons">
+                    <button id="resume-btn" class="menu-btn primary-btn">▶️ 继续游戏</button>
+                    <button id="restart-pause-btn" class="menu-btn secondary-btn">🔄 重新开始</button>
+                    <button id="quit-btn" class="menu-btn secondary-btn">🏠 退出关卡</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 完成关卡 -->
+        <div id="complete-modal" class="modal overlay">
+            <div class="modal-content complete-content">
+                <h2>🎉 关卡完成！</h2>
+                <div class="completion-stats">
+                    <div class="stat-row">
+                        <span>⏱️ 用时:</span>
+                        <span id="final-time">00:00</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>👆 移动次数:</span>
+                        <span id="final-moves">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>⭐ 评分:</span>
+                        <span id="final-rating">⭐⭐⭐</span>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button id="next-level-btn" class="menu-btn primary-btn">➡️ 下一关</button>
+                    <button id="replay-btn" class="menu-btn secondary-btn">🔄 重玩</button>
+                    <button id="back-to-levels-btn" class="menu-btn secondary-btn">🗂️ 关卡选择</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="levels.js"></script>
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
