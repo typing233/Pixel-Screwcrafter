@@ -5,6 +5,7 @@ const Game = {
     gameState: {
         isPlaying: false,
         isPaused: false,
+        isShowingTarget: false,
         startTime: 0,
         elapsedTime: 0,
         timerInterval: null,
@@ -13,7 +14,8 @@ const Game = {
         selectedScrew: null,
         screwsOnBoard: [],
         pixelsRevealed: [],
-        history: []
+        history: [],
+        targetShown: false
     },
     canvas: null,
     ctx: null,
@@ -176,7 +178,7 @@ const Game = {
         });
 
         this.canvas.addEventListener('click', (e) => {
-            if (!this.gameState.isPlaying || this.gameState.isPaused) return;
+            if (!this.gameState.isPlaying || this.gameState.isPaused || this.gameState.isShowingTarget) return;
             AudioManager.ensureContext();
             this.handleCanvasClick(e);
         });
@@ -270,29 +272,98 @@ const Game = {
         this.showScreen('game-screen');
         
         this.gameState = {
-            isPlaying: true,
+            isPlaying: false,
             isPaused: false,
+            isShowingTarget: true,
             startTime: Date.now(),
             elapsedTime: 0,
             timerInterval: null,
             moveCount: 0,
             screwInventory: [],
             selectedScrew: null,
-            screwsOnBoard: JSON.parse(JSON.stringify(level.screwPositions)),
+            screwsOnBoard: [],
             pixelsRevealed: [],
-            history: []
+            history: [],
+            targetShown: false
         };
 
         document.getElementById('current-level-name').textContent = `${level.emoji} ${level.name}`;
         document.getElementById('move-count').textContent = '移动: 0';
-        document.getElementById('game-timer').textContent = '00:00';
+        document.getElementById('game-timer').textContent = '记忆目标图...';
 
-        this.startTimer();
         this.calculateGrid();
-        this.render();
+        this.renderTarget();
         this.updateScrewInventory();
         
         AudioManager.playBGM();
+
+        setTimeout(() => {
+            this.startPuzzle();
+        }, 3000);
+    },
+
+    startPuzzle() {
+        this.gameState.isShowingTarget = false;
+        this.gameState.isPlaying = true;
+        this.gameState.targetShown = true;
+        this.gameState.startTime = Date.now();
+
+        const level = this.currentLevel;
+        
+        const screwPositions = JSON.parse(JSON.stringify(level.screwPositions));
+        
+        const shuffledPositions = this.shuffleScrewPositions(screwPositions);
+        
+        this.gameState.screwsOnBoard = shuffledPositions;
+        this.gameState.screwInventory = [];
+
+        this.startTimer();
+        this.render();
+        this.updateScrewInventory();
+        
+        document.getElementById('game-timer').textContent = '00:00';
+    },
+
+    shuffleScrewPositions(originalPositions) {
+        const level = this.currentLevel;
+        const validPositions = [];
+        
+        for (let y = 0; y < level.gridSize; y++) {
+            for (let x = 0; x < level.gridSize; x++) {
+                if (level.pixels[y][x] !== 0) {
+                    validPositions.push({x, y});
+                }
+            }
+        }
+
+        const shuffled = [];
+        const usedPositions = new Set();
+        const originalSet = new Set(originalPositions.map(p => `${p.x},${p.y}`));
+
+        for (const screw of originalPositions) {
+            let attempts = 0;
+            let newPos;
+            
+            do {
+                newPos = validPositions[Math.floor(Math.random() * validPositions.length)];
+                attempts++;
+            } while (
+                (usedPositions.has(`${newPos.x},${newPos.y}`) || 
+                 (originalSet.has(`${newPos.x},${newPos.y}`) && attempts < 50)) &&
+                attempts < 100
+            );
+
+            usedPositions.add(`${newPos.x},${newPos.y}`);
+            shuffled.push({
+                x: newPos.x,
+                y: newPos.y,
+                color: screw.color,
+                targetX: screw.x,
+                targetY: screw.y
+            });
+        }
+
+        return shuffled;
     },
 
     calculateGrid() {
@@ -313,7 +384,7 @@ const Game = {
         }
         
         this.gameState.timerInterval = setInterval(() => {
-            if (!this.gameState.isPaused) {
+            if (!this.gameState.isPaused && !this.gameState.isShowingTarget) {
                 this.gameState.elapsedTime = Math.floor((Date.now() - this.gameState.startTime) / 1000);
                 this.updateTimerDisplay();
             }
@@ -403,9 +474,7 @@ const Game = {
             const screw = this.gameState.screwsOnBoard[screwIndex];
             this.gameState.screwsOnBoard.splice(screwIndex, 1);
             this.gameState.screwInventory.push({
-                ...screw,
-                originalX: screw.x,
-                originalY: screw.y
+                ...screw
             });
             
             this.gameState.moveCount++;
@@ -451,8 +520,8 @@ const Game = {
             x: gridX,
             y: gridY,
             color: screw.color,
-            originalX: screw.originalX,
-            originalY: screw.originalY
+            targetX: screw.targetX,
+            targetY: screw.targetY
         });
 
         this.gameState.selectedScrew = null;
@@ -460,7 +529,14 @@ const Game = {
 
         document.getElementById('move-count').textContent = `移动: ${this.gameState.moveCount}`;
 
-        AudioManager.playScrewScrew();
+        const isCorrectPosition = (gridX === screw.targetX && gridY === screw.targetY);
+        
+        if (isCorrectPosition) {
+            AudioManager.playScrewScrew();
+            AudioManager.playPixelReveal();
+        } else {
+            AudioManager.playScrewScrew();
+        }
 
         this.render();
         this.updateScrewInventory();
@@ -499,34 +575,127 @@ const Game = {
     },
 
     showHint() {
-        const misplacedScrews = this.gameState.screwsOnBoard.filter(s => {
-            return s.x !== s.originalX || s.y !== s.originalY;
-        });
-
-        if (misplacedScrews.length > 0) {
-            const hintScrew = misplacedScrews[0];
-            this.highlightCell(hintScrew.originalX, hintScrew.originalY);
-        } else if (this.gameState.screwsOnBoard.length < this.currentLevel.screwPositions.length) {
-            const level = this.currentLevel;
-            for (const screw of level.screwPositions) {
-                const onBoard = this.gameState.screwsOnBoard.find(s => s.x === screw.x && s.y === screw.y);
-                if (!onBoard) {
-                    const inInventory = this.gameState.screwInventory.find(s => s.color === screw.color);
-                    if (inInventory) {
-                        this.highlightCell(screw.x, screw.y);
-                        break;
-                    }
-                }
+        const level = this.currentLevel;
+        
+        for (const screw of this.gameState.screwsOnBoard) {
+            const isCorrect = (screw.x === screw.targetX && screw.y === screw.targetY);
+            if (!isCorrect) {
+                this.showHintForScrew(screw);
+                return;
             }
+        }
+
+        for (const screw of this.gameState.screwInventory) {
+            this.showHintForScrew(screw);
+            return;
         }
     },
 
-    highlightCell(gridX, gridY) {
+    showHintForScrew(screw) {
+        const isOnBoard = this.gameState.screwsOnBoard.some(s => s.x === screw.x && s.y === screw.y);
+        
+        if (isOnBoard) {
+            this.highlightCellWithMessage(
+                screw.x, screw.y, 
+                screw.targetX, screw.targetY,
+                '这个螺丝应该移动到高亮位置'
+            );
+        } else {
+            this.highlightTargetPosition(
+                screw.targetX, screw.targetY,
+                screw.color
+            );
+        }
+    },
+
+    highlightCellWithMessage(fromX, fromY, toX, toY, message) {
+        this.highlightCell(fromX, fromY, '#FF6B6B');
+        this.highlightCell(toX, toY, '#4ECDC4');
+        
+        this.showHintMessage(message);
+    },
+
+    highlightTargetPosition(targetX, targetY, colorIndex) {
+        this.highlightCell(targetX, targetY, '#4ECDC4');
+        
+        const colorName = this.getColorName(colorIndex);
+        this.showHintMessage(`将 ${colorName} 螺丝放到高亮位置`);
+    },
+
+    getColorName(colorIndex) {
+        const level = this.currentLevel;
+        const color = level.colorMap[colorIndex];
+        
+        const colorNames = {
+            '#FFD700': '金色',
+            '#FFA500': '橙色',
+            '#8B4513': '棕色',
+            '#4A2C2A': '深棕色',
+            '#228B22': '绿色',
+            '#FFB6C1': '浅粉色',
+            '#FF69B4': '粉色',
+            '#FF1493': '深粉色',
+            '#C71585': '紫红色',
+            '#000000': '黑色',
+            '#333333': '深灰色',
+            '#FFFFFF': '白色',
+            '#C0C0C0': '银色',
+            '#808080': '灰色',
+            '#4169E1': '蓝色',
+            '#FF4500': '橙红色',
+            '#90EE90': '浅绿色',
+            '#32CD32': '酸橙色',
+            '#DC143C': '猩红色',
+            '#FFFF00': '黄色',
+            '#FF0000': '红色',
+            '#00FF00': '亮绿色',
+            '#0000FF': '蓝色',
+            '#4B0082': '靛蓝色',
+            '#9400D3': '紫色'
+        };
+        
+        return colorNames[color] || `${colorIndex}号`;
+    },
+
+    showHintMessage(message) {
+        let hintElement = document.getElementById('hint-message');
+        if (!hintElement) {
+            hintElement = document.createElement('div');
+            hintElement.id = 'hint-message';
+            hintElement.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.9);
+                color: #FFD700;
+                padding: 15px 30px;
+                border-radius: 10px;
+                font-size: 1.2rem;
+                z-index: 2000;
+                border: 2px solid #FFD700;
+                text-align: center;
+                max-width: 80%;
+            `;
+            document.body.appendChild(hintElement);
+        }
+        
+        hintElement.textContent = message;
+        hintElement.style.display = 'block';
+        
+        setTimeout(() => {
+            hintElement.style.display = 'none';
+        }, 3000);
+    },
+
+    highlightCell(gridX, gridY, color = '#FFD700') {
+        this.render();
+        
         const x = this.offsetX + gridX * this.cellSize;
         const y = this.offsetY + gridY * this.cellSize;
         
         this.ctx.save();
-        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 4;
         this.ctx.setLineDash([5, 5]);
         this.ctx.strokeRect(x + 2, y + 2, this.cellSize - 4, this.cellSize - 4);
@@ -534,7 +703,7 @@ const Game = {
 
         setTimeout(() => {
             this.render();
-        }, 2000);
+        }, 3000);
     },
 
     updateScrewInventory() {
@@ -544,8 +713,20 @@ const Game = {
         this.gameState.screwInventory.forEach((screw, index) => {
             const item = document.createElement('div');
             item.className = `screw-item ${index === this.gameState.selectedScrew ? 'selected' : ''}`;
-            item.innerHTML = '🔩';
-            item.style.backgroundColor = this.currentLevel.colorMap[screw.color] || '#888';
+            
+            const level = this.currentLevel;
+            const isCorrectOnBoard = this.gameState.screwsOnBoard.some(
+                s => s.x === screw.targetX && s.y === screw.targetY && 
+                     s.color === screw.color
+            );
+            
+            let statusText = '';
+            if (!isCorrectOnBoard) {
+                statusText = `<div style="font-size:0.6rem;color:#aaa;margin-top:2px;">目标:(${screw.targetX},${screw.targetY})</div>`;
+            }
+            
+            item.innerHTML = `🔩${statusText}`;
+            item.style.backgroundColor = level.colorMap[screw.color] || '#888';
             
             item.addEventListener('click', () => {
                 AudioManager.playClick();
@@ -564,14 +745,14 @@ const Game = {
     checkLevelComplete() {
         const level = this.currentLevel;
         
-        const allCorrect = level.screwPositions.every(target => {
-            const actual = this.gameState.screwsOnBoard.find(
-                s => s.x === target.x && s.y === target.y && s.color === target.color
-            );
-            return actual !== undefined;
+        const allCorrect = this.gameState.screwsOnBoard.every(screw => {
+            return screw.x === screw.targetX && screw.y === screw.targetY;
         });
 
-        if (allCorrect && this.gameState.screwsOnBoard.length === level.screwPositions.length) {
+        const totalScrews = level.screwPositions.length;
+        const allPlaced = this.gameState.screwsOnBoard.length === totalScrews;
+
+        if (allCorrect && allPlaced) {
             this.completeLevel();
         }
     },
@@ -637,6 +818,54 @@ const Game = {
         }
     },
 
+    renderTarget() {
+        const ctx = this.ctx;
+        const level = this.currentLevel;
+
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        for (let y = 0; y < level.gridSize; y++) {
+            for (let x = 0; x < level.gridSize; x++) {
+                const pixelValue = level.pixels[y][x];
+                const xPos = this.offsetX + x * this.cellSize;
+                const yPos = this.offsetY + y * this.cellSize;
+
+                if (pixelValue === 0) {
+                    ctx.fillStyle = '#0a0a1a';
+                } else {
+                    ctx.fillStyle = level.colorMap[pixelValue] || '#888';
+                }
+
+                ctx.fillRect(xPos, yPos, this.cellSize, this.cellSize);
+
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(xPos, yPos, this.cellSize, this.cellSize);
+            }
+        }
+
+        level.screwPositions.forEach(screw => {
+            this.drawScrew(screw.x, screw.y, screw.color);
+        });
+
+        this.showTargetHint();
+    },
+
+    showTargetHint() {
+        const ctx = this.ctx;
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(centerX - 200, centerY + 100, 400, 60);
+
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('📸 记住目标图 - 3秒后开始拼图', centerX, centerY + 138);
+    },
+
     render() {
         const ctx = this.ctx;
         const level = this.currentLevel;
@@ -653,15 +882,31 @@ const Game = {
                 if (pixelValue === 0) {
                     ctx.fillStyle = '#0a0a1a';
                 } else {
-                    const hasScrew = this.gameState.screwsOnBoard.some(
+                    const screwOnPosition = this.gameState.screwsOnBoard.find(
                         s => s.x === x && s.y === y
                     );
-                    
-                    if (hasScrew) {
-                        ctx.fillStyle = level.colorMap[pixelValue] || '#888';
+
+                    if (screwOnPosition) {
+                        const isCorrect = (screwOnPosition.x === screwOnPosition.targetX && 
+                                          screwOnPosition.y === screwOnPosition.targetY);
+                        
+                        if (isCorrect) {
+                            ctx.fillStyle = level.colorMap[pixelValue] || '#888';
+                        } else {
+                            const color = level.colorMap[pixelValue] || '#888';
+                            ctx.fillStyle = this.darkenColor(color, 0.5);
+                        }
                     } else {
-                        const color = level.colorMap[pixelValue] || '#888';
-                        ctx.fillStyle = this.darkenColor(color, 0.3);
+                        const targetScrew = level.screwPositions.find(
+                            s => s.x === x && s.y === y
+                        );
+                        
+                        if (targetScrew) {
+                            const color = level.colorMap[pixelValue] || '#888';
+                            ctx.fillStyle = this.darkenColor(color, 0.5);
+                        } else {
+                            ctx.fillStyle = level.colorMap[pixelValue] || '#888';
+                        }
                     }
                 }
 
@@ -674,11 +919,12 @@ const Game = {
         }
 
         this.gameState.screwsOnBoard.forEach(screw => {
-            this.drawScrew(screw.x, screw.y, screw.color);
+            const isCorrect = (screw.x === screw.targetX && screw.y === screw.targetY);
+            this.drawScrew(screw.x, screw.y, screw.color, isCorrect);
         });
     },
 
-    drawScrew(gridX, gridY, colorIndex) {
+    drawScrew(gridX, gridY, colorIndex, isCorrect = true) {
         const ctx = this.ctx;
         const x = this.offsetX + gridX * this.cellSize + this.cellSize / 2;
         const y = this.offsetY + gridY * this.cellSize + this.cellSize / 2;
@@ -688,9 +934,16 @@ const Game = {
             x - radius * 0.3, y - radius * 0.3, 0,
             x, y, radius
         );
-        gradient.addColorStop(0, '#FFD700');
-        gradient.addColorStop(0.5, '#DAA520');
-        gradient.addColorStop(1, '#B8860B');
+        
+        if (isCorrect) {
+            gradient.addColorStop(0, '#FFD700');
+            gradient.addColorStop(0.5, '#DAA520');
+            gradient.addColorStop(1, '#B8860B');
+        } else {
+            gradient.addColorStop(0, '#A0A0A0');
+            gradient.addColorStop(0.5, '#808080');
+            gradient.addColorStop(1, '#606060');
+        }
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -699,11 +952,11 @@ const Game = {
 
         ctx.beginPath();
         ctx.arc(x, y, radius * 0.8, 0, Math.PI * 2);
-        ctx.strokeStyle = '#8B7355';
+        ctx.strokeStyle = isCorrect ? '#8B7355' : '#404040';
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        ctx.strokeStyle = '#555';
+        ctx.strokeStyle = isCorrect ? '#555' : '#404040';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         
@@ -716,6 +969,13 @@ const Game = {
         ctx.moveTo(x, y - radius * 0.5);
         ctx.lineTo(x, y + radius * 0.5);
         ctx.stroke();
+
+        if (!isCorrect) {
+            ctx.fillStyle = '#FF6B6B';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('?', x, y - radius - 5);
+        }
     },
 
     darkenColor(color, amount) {
