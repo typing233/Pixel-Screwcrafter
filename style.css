@@ -1,0 +1,690 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-color: #1a1a2e;
+    --primary-color: #16213e;
+    --secondary-color: #0f3460;
+    --accent-color: #e94560;
+    --text-color: #f1f1f1;
+    --text-secondary: #a0a0a0;
+    --screw-color: #d4af37;
+    --screw-shadow: #8b7355;
+    --pixel-size: 20;
+}
+
+.theme-light {
+    --bg-color: #f5f5f5;
+    --primary-color: #ffffff;
+    --secondary-color: #e0e0e0;
+    --accent-color: #4caf50;
+    --text-color: #333333;
+    --text-secondary: #666666;
+}
+
+.theme-dark {
+    --bg-color: #0d0d0d;
+    --primary-color: #1a1a1a;
+    --secondary-color: #2d2d2d;
+    --accent-color: #bb86fc;
+    --text-color: #e0e0e0;
+    --text-secondary: #888888;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+#app {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    transition: opacity 0.3s ease;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* 主菜单 */
+#main-menu {
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, var(--bg-color) 0%, var(--primary-color) 100%);
+}
+
+.menu-container {
+    text-align: center;
+    padding: 40px;
+}
+
+.game-title {
+    font-size: 3.5rem;
+    margin-bottom: 10px;
+    text-shadow: 4px 4px 0 var(--secondary-color),
+                 -1px -1px 0 var(--accent-color);
+}
+
+.pixel-text {
+    font-family: 'Courier New', monospace;
+    color: var(--accent-color);
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.menu-btn {
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 200px;
+}
+
+.menu-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.menu-btn:active {
+    transform: translateY(0);
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #c73e54 100%);
+    color: white;
+}
+
+.secondary-btn {
+    background: var(--secondary-color);
+    color: var(--text-color);
+    border: 2px solid var(--accent-color);
+}
+
+.game-info {
+    margin-top: 40px;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+/* 关卡选择 */
+#level-select {
+    flex-direction: column;
+    padding: 20px;
+    background: var(--bg-color);
+}
+
+.level-select-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.header h2 {
+    font-size: 1.8rem;
+    color: var(--accent-color);
+}
+
+.back-btn {
+    padding: 10px 20px;
+    background: var(--secondary-color);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.back-btn:hover {
+    background: var(--accent-color);
+}
+
+.theme-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.theme-tab {
+    padding: 10px 20px;
+    background: var(--secondary-color);
+    border: 2px solid transparent;
+    color: var(--text-color);
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.theme-tab:hover {
+    border-color: var(--accent-color);
+}
+
+.theme-tab.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.level-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.level-card {
+    background: var(--primary-color);
+    border: 2px solid var(--secondary-color);
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.level-card:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.level-card.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.level-card.locked:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.level-preview {
+    width: 100%;
+    height: 100px;
+    background: var(--secondary-color);
+    border-radius: 5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.level-name {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.level-difficulty {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* 设置界面 */
+#settings {
+    justify-content: center;
+    background: var(--bg-color);
+}
+
+.settings-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+}
+
+.settings-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: var(--primary-color);
+    border-radius: 8px;
+}
+
+.setting-item label {
+    font-size: 1.1rem;
+}
+
+.setting-item select {
+    padding: 8px 15px;
+    background: var(--secondary-color);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.setting-item input[type="range"] {
+    width: 150px;
+    accent-color: var(--accent-color);
+}
+
+/* 开关样式 */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--secondary-color);
+    transition: .4s;
+    border-radius: 26px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--accent-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.game-stats {
+    background: var(--primary-color);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.game-stats h3 {
+    margin-bottom: 15px;
+    color: var(--accent-color);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* 游戏界面 */
+#game-screen {
+    flex-direction: column;
+    background: var(--bg-color);
+}
+
+.game-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 15px;
+}
+
+.game-btn {
+    padding: 10px 20px;
+    background: var(--secondary-color);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.game-btn:hover {
+    background: var(--accent-color);
+}
+
+.game-info-bar {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+.game-info-bar .level-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.timer, .moves {
+    font-size: 1.1rem;
+    color: var(--text-color);
+    background: var(--secondary-color);
+    padding: 8px 15px;
+    border-radius: 20px;
+}
+
+.game-area {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+}
+
+.canvas-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--primary-color);
+    border-radius: 10px;
+    padding: 10px;
+    overflow: hidden;
+}
+
+#game-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    image-rendering: pixelated;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.screw-tray {
+    width: 300px;
+    background: var(--primary-color);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.screw-tray h3 {
+    margin-bottom: 15px;
+    color: var(--accent-color);
+    text-align: center;
+}
+
+.screw-inventory {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    align-content: start;
+}
+
+.screw-item {
+    aspect-ratio: 1;
+    background: var(--secondary-color);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.screw-item:hover {
+    border-color: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.screw-item.selected {
+    border-color: var(--accent-color);
+    background: rgba(233, 69, 96, 0.2);
+}
+
+.game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px 0;
+}
+
+.control-btn {
+    padding: 12px 30px;
+    font-size: 1rem;
+    background: var(--secondary-color);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.control-btn:hover {
+    background: var(--accent-color);
+}
+
+/* 模态框 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+    background: var(--primary-color);
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    border: 2px solid var(--accent-color);
+    max-width: 400px;
+}
+
+.modal-content h2 {
+    margin-bottom: 30px;
+    color: var(--accent-color);
+    font-size: 1.8rem;
+}
+
+.modal-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.completion-stats {
+    margin-bottom: 30px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--secondary-color);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--secondary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #c73e54;
+}
+
+/* 动画效果 */
+@keyframes screwUnscrew {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(90deg) scale(1.1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    75% { transform: rotate(270deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(0); }
+}
+
+@keyframes screwScrew {
+    0% { transform: rotate(0deg) scale(0); opacity: 0; }
+    25% { transform: rotate(-90deg) scale(0.6); opacity: 0.5; }
+    50% { transform: rotate(-180deg) scale(0.8); opacity: 0.8; }
+    75% { transform: rotate(-270deg) scale(1.1); opacity: 1; }
+    100% { transform: rotate(-360deg) scale(1); opacity: 1; }
+}
+
+@keyframes pixelReveal {
+    0% { opacity: 0; transform: scale(0.5); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.screw-unscrew-animation {
+    animation: screwUnscrew 0.5s ease-out forwards;
+}
+
+.screw-screw-animation {
+    animation: screwScrew 0.5s ease-out forwards;
+}
+
+.pixel-reveal {
+    animation: pixelReveal 0.3s ease-out forwards;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .game-area {
+        flex-direction: column;
+    }
+    
+    .screw-tray {
+        width: 100%;
+        height: 200px;
+    }
+    
+    .screw-inventory {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .game-title {
+        font-size: 2.5rem;
+    }
+    
+    .game-info-bar {
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+    
+    .level-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .setting-item {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+}
